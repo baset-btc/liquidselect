@@ -1,18 +1,19 @@
 export interface UTXO {
-    txid: string | Buffer,
+    txid: string | Uint8Array,
     vout: number,
     value: number,
-    nonWitnessUtxo? : Buffer,
+    nonWitnessUtxo? : Uint8Array,
     witnessUtxo? : {
-        script: Buffer,
+        script: Uint8Array,
         value: number
     }
-    script?: Buffer,
+    redeemScript?: Uint8Array,
+    witnessScript?: Uint8Array,
     isTaproot?: boolean
 }
 export interface Target {
     address?: string,
-    script?: Buffer,
+    script?: Uint8Array,
     value?: number
 }
 export interface SelectedUTXO {
