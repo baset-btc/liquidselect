@@ -1,9 +1,9 @@
 {
-  "name": "coinselect",
-  "version": "3.1.13",
+  "name": "bitcoinselect",
+  "version": "1.0.0",
   "description": "A transaction input selection module for bitcoin.",
   "keywords": [
-    "coinselect",
+    "bitcoinselect",
     "coin",
     "unspents",
     "wallet",
@@ -16,25 +16,26 @@
     "optimizing",
     "bitcoin"
   ],
-  "homepage": "https://github.com/bitcoinjs/coinselect",
+  "homepage": "https://github.com/ChrisCho-H/bitcoinselect",
   "bugs": {
-    "url": "https://github.com/bitcoinjs/coinselect/issues"
+    "url": "https://github.com/ChrisCho-H/bitcoinselect/issues"
   },
   "license": "MIT",
-  "author": "Daniel Cousens",
+  "author": "Chris Hyunhum Cho",
   "files": [
     "accumulative.js",
     "blackjack.js",
     "break.js",
     "index.js",
     "split.js",
-    "utils.js"
+    "utils.js",
+    "index.d.ts"
   ],
   "main": "index.js",
   "types": "index.d.ts",
   "repository": {
     "type": "git",
-    "url": "https://github.com/bitcoinjs/coinselect.git"
+    "url": "https://github.com/ChrisCho-H/bitcoinselect.git"
   },
   "scripts": {
     "coverage": "nyc --check-coverage --branches 100 --functions 100 tape test/*.js",
