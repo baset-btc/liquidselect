@@ -2,10 +2,17 @@
 
 [![js-standard-style](https://cdn.rawgit.com/feross/standard/master/badge.svg)](https://github.com/feross/standard)
 
-An unspent transaction output (UTXO) selection module for bitcoin.
+This is a forked project of `coinselect`, which is an unspent transaction output (UTXO) selection module for bitcoin.
+
+It supports precise calculation of fee for various type of input and output(`segwit`, `non-segwit`, `nested segwit`, `taproot`).
 
 **WARNING:** Value units are in `satoshi`s, **not** Bitcoin.
 
+## Install
+
+```bash
+npm install bitcoinselect
+```
 
 ## Algorithms
 Module | Algorithm | Re-orders UTXOs?
@@ -35,14 +42,31 @@ let utxos = [
     ...,
     value: 10000,
     // For use with PSBT:
-    // not needed for coinSelect, but will be passed on to inputs later
+    // will be passed on to inputs later
+    // If not specified, every input will be assumed as p2pkh output for fee calculation
     nonWitnessUtxo: Buffer.from('...full raw hex of txId tx...', 'hex'),
     // OR
-    // if your utxo is a segwit output, you can use witnessUtxo instead
+    // if your utxo is a segwit output(p2wpkh), you should use witnessUtxo
+    // This will calculate segwit input fee precisely which is approximately 1/4 of p2pkh
     witnessUtxo: {
       script: Buffer.from('... scriptPubkey hex...', 'hex'),
       value: 10000 // 0.0001 BTC and is the exact same as the value above
-    }
+    },
+    // OR
+    // if your utxo is a script output(p2sh), you should use redeemScript
+    // This will calculate script bytes for precise fee calcuation
+    redeemScript: Buffer.from('...'),
+    // OR
+    // if your utxo is a segwit script output(p2wsh), you should use witnessScript
+    // This will calculate segwit script fee precisely which is approximately 1/4 of p2sh
+    witnessScript: Buffer.from('...'),
+    // OR if your utxo is a nested segwit output, you should use
+    // both redeemScript and witnessUtxo (p2sh-p2wpkh)
+    // both redeemScript and witnessScript (p2sh-p2wsh)
+    // for precise fee calculation
+    // OR
+    // if your utxo is a taproot output(p2tr), you should set isTaproot true
+    isTaproot: true
   }
 ]
 let targets = [
