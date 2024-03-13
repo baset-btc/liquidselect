@@ -31,7 +31,10 @@ function outputBytes(output) {
     TX_OUTPUT_BASE +
     (output.script
       ? output.script.length
-      : output.address?.startsWith("bc1") || output.address?.startsWith("tb1")
+      : output.address?.startsWith("bc1") ||
+        output.address?.startsWith("tb1") ||
+        output.address?.startsWith("ex1") ||
+        output.address?.startsWith("tex1")
       ? output.address?.length === 42
         ? TX_OUTPUT_SEGWIT
         : TX_OUTPUT_SEGWIT_SCRIPTHASH
