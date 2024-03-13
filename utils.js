@@ -61,7 +61,6 @@ function transactionBytes(inputs, outputs) {
 function uintOrNaN(v) {
   if (typeof v !== "number") return NaN;
   if (!isFinite(v)) return NaN;
-  if (Math.floor(v) !== v) return NaN;
   if (v < 0) return NaN;
   return v;
 }
@@ -88,11 +87,11 @@ function finalize(inputs, outputs, feeRate) {
 
   // is it worth a change output?
   if (remainderAfterExtraOutput > dustThreshold({}, feeRate)) {
-    outputs = outputs.concat({ value: remainderAfterExtraOutput });
+    outputs = outputs.concat({ value: Math.round(remainderAfterExtraOutput) });
   }
 
   var fee = sumOrNaN(inputs) - sumOrNaN(outputs);
-  if (!isFinite(fee)) return { fee: feeRate * bytesAccum };
+  if (!isFinite(fee)) return { fee: Math.round(feeRate * bytesAccum) };
 
   return {
     inputs: inputs,

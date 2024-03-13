@@ -31,5 +31,5 @@ module.exports = function blackjack(utxos, outputs, feeRate) {
     return utils.finalize(inputs, outputs, feeRate);
   }
 
-  return { fee: feeRate * bytesAccum };
+  return { fee: Math.round(feeRate * bytesAccum) };
 };
