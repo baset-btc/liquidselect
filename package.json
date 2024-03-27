@@ -48,5 +48,7 @@
     "standard": "^14.3.4",
     "tape": "^4.5.1"
   },
-  "dependencies": {}
+  "dependencies": {
+    "varuint-bitcoin": "^1.1.2"
+  }
 }

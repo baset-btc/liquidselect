@@ -2,6 +2,10 @@ var accumulative = require("./accumulative");
 var blackjack = require("./blackjack");
 var utils = require("./utils");
 
+// Library limitations
+// - Only P2WPKH (segwit)
+// - Only non confidential
+// - Not prepared to send multiple assets
 // order by descending value, minus the inputs approximate fee
 function utxoScore(x, feeRate) {
   return x.value - feeRate * utils.inputBytes(x);

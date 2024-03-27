@@ -9,7 +9,11 @@ module.exports = function blackjack(utxos, outputs, feeRate) {
 
   var inAccum = 0;
   var inputs = [];
-  var outAccum = utils.sumOrNaN(outputs);
+  var outAccum = utils.sumOrNaN(outputs); // Needs to filter by asset
+  // Necesito filtrar utxos y outputs por asset
+  // Hacer un for de este algoritmo para cada asset
+  // A su vez, el fee solo se calcula para lbtc, una vez se tienen todos los inputs y outputs
+  // Internamente, se calcula como inputs y outputs vacios, pero deben concordar todos los valores de los assets
   var threshold = utils.dustThreshold({}, feeRate);
 
   for (var i = 0; i < utxos.length; ++i) {

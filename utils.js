@@ -1,46 +1,56 @@
+const varuint = require("varuint-bitcoin");
 // baseline estimates, used to improve performance
-var TX_EMPTY_SIZE = 4 + 1 + 1 + 4;
-var TX_INPUT_BASE = 32 + 4 + 1 + 4;
-var TX_INPUT_PUBKEYHASH = 107;
-var TX_INPUT_SEGWIT = 28;
-var TX_INPUT_TAPROOT = 17; // round up 16.5 bytes
-var TX_OUTPUT_BASE = 8 + 1;
-var TX_OUTPUT_PUBKEYHASH = 25;
-var TX_OUTPUT_SCRIPTHASH = 23;
-var TX_OUTPUT_SEGWIT = 22;
-var TX_OUTPUT_SEGWIT_SCRIPTHASH = 34;
+var TX_EMPTY_SIZE = 4 + 1 + 4;
+var TX_INPUT_BASE = 32 + 4 + 4;
+var TX_INPUT_ISSUANCE_BASE = 64;
+var TX_OUTPUT_FEE = 9 + 1 + 33 + 1; // value + nonce + asset + scriptBytes
+// issuanceRangeProof + inflationRangeProof + witness.length + signature.length + pubkey.length + 1 byte each to represent the length of signature and pubkey
+var TX_INPUT_WITNESS = 1 + 1 + 1 + 72 + 33 + 1 + 1;
+var WITNESS_SCALE_FACTOR = 4;
 
-function inputBytes(input) {
+function encodingLength(i) {
+  if (!i) return 1;
+  return varuint.encodingLength(i);
+}
+
+function scriptBytes(script) {
+  if (!script) return 1;
+  const length = script.length;
+  return encodingLength(length) + length;
+}
+
+function inputBytes(input, _ALLOW_WITNESS = false) {
   return (
     TX_INPUT_BASE +
-    (input.redeemScript ? input.redeemScript.length : 0) +
-    (input.witnessScript
-      ? parseInt(input.witnessScript.length / 4)
-      : input.isTaproot
-      ? TX_INPUT_TAPROOT
-      : input.witnessUtxo
-      ? TX_INPUT_SEGWIT
-      : !input.redeemScript
-      ? TX_INPUT_PUBKEYHASH
+    scriptBytes(input.witnessUtxo?.script) +
+    (input.issuance
+      ? TX_INPUT_ISSUANCE_BASE +
+        input.issuance.assetAmount.length +
+        input.issuance.tokenAmount.length
+      : 0) +
+    (_ALLOW_WITNESS
+      ? scriptBytes(input.witnessUtxo?.issuanceRangeProof) +
+        scriptBytes(input.witnessUtxo?.inflationRangeProof) +
+        TX_INPUT_WITNESS +
+        encodingLength(input.witnessUtxo?.peginWitness) +
+        (input.witnessUtxo?.peginWitness
+          ? input.witnessUtxo?.peginWitness?.reduce(function (a, x) {
+              return a + scriptBytes(x);
+            }, 0)
+          : 0)
       : 0)
   );
 }
 
-function outputBytes(output) {
+function outputBytes(output, _ALLOW_WITNESS = false) {
   return (
-    TX_OUTPUT_BASE +
-    (output.script
-      ? output.script.length
-      : output.address?.startsWith("bc1") ||
-        output.address?.startsWith("tb1") ||
-        output.address?.startsWith("ex1") ||
-        output.address?.startsWith("tex1")
-      ? output.address?.length === 42
-        ? TX_OUTPUT_SEGWIT
-        : TX_OUTPUT_SEGWIT_SCRIPTHASH
-      : output.address?.startsWith("3") || output.address?.startsWith("2")
-      ? TX_OUTPUT_SCRIPTHASH
-      : TX_OUTPUT_PUBKEYHASH)
+    9 + // value
+    1 + // nonce
+    (output.asset ? output.asset.length : 0) +
+    scriptBytes(output.script) +
+    (_ALLOW_WITNESS
+      ? scriptBytes(output.surjectionProof) + scriptBytes(output.rangeProof)
+      : 0)
   );
 }
 
@@ -49,16 +59,30 @@ function dustThreshold(output, feeRate) {
   return inputBytes({}) * feeRate;
 }
 
-function transactionBytes(inputs, outputs) {
+function __byteLength(inputs, outputs, _ALLOW_WITNESS = false) {
   return (
     TX_EMPTY_SIZE +
+    encodingLength(inputs.length) +
+    encodingLength(outputs.length) +
     inputs.reduce(function (a, x) {
-      return a + inputBytes(x);
+      return a + inputBytes(x, _ALLOW_WITNESS);
     }, 0) +
     outputs.reduce(function (a, x) {
-      return a + outputBytes(x);
-    }, 0)
+      return a + outputBytes(x, _ALLOW_WITNESS);
+    }, 0) +
+    TX_OUTPUT_FEE
   );
+}
+
+var BLANK_OUTPUT = outputBytes({});
+
+function transactionBytes(inputs, outputs) {
+  // Estimate fee without fee output
+  const base = __byteLength(inputs, outputs, false);
+  const total = __byteLength(inputs, outputs, true);
+  const bytes = base * (WITNESS_SCALE_FACTOR - 1) + total;
+
+  return Math.floor((bytes + WITNESS_SCALE_FACTOR - 1) / WITNESS_SCALE_FACTOR);
 }
 
 function uintOrNaN(v) {
@@ -79,8 +103,6 @@ function sumOrNaN(range) {
     return a + uintOrNaN(x.value);
   }, 0);
 }
-
-var BLANK_OUTPUT = outputBytes({});
 
 function finalize(inputs, outputs, feeRate) {
   var bytesAccum = transactionBytes(inputs, outputs);
