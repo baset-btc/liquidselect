@@ -23,11 +23,11 @@ function _inputBytes(input, _ALLOW_WITNESS = false) {
   return (
     TX_INPUT_BASE +
     scriptBytes(input.witnessUtxo?.script) +
-    (input.issuance
-      ? TX_INPUT_ISSUANCE_BASE +
-        1 + // For future purposes add input.issuance.assetAmount.length
-        1 // For future purposes add input.issuance.tokenAmount.length
-      : 0) +
+    // (input.issuance
+    //   ? TX_INPUT_ISSUANCE_BASE +
+    //     1 + // For future purposes add input.issuance.assetAmount.length
+    //     1 // For future purposes add input.issuance.tokenAmount.length
+    //   : 0) +
     (_ALLOW_WITNESS
       ? TX_INPUT_WITNESS +
         encodingLength(input.witnessUtxo?.peginWitness) +

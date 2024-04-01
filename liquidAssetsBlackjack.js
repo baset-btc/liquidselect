@@ -99,14 +99,14 @@ module.exports = function liquidAssetsBlackjack(
     if (input.witnessUtxo.asset === feeAsset) {
       const basePotentialFee = feeRate * (bytesAccum + inputBytes);
       const inputValue = utils.uintOrNaN(input.value);
-      let shouldHadExtraOutput =
+      let shouldAddExtraOutput =
         inAccum[feeAsset] +
           inputValue -
           (outAccum[feeAsset] + basePotentialFee) >
         threshold;
       let fee =
         basePotentialFee +
-        feeRate * (shouldHadExtraOutput ? EXTRA_OUTPUT_BYTES : 0);
+        feeRate * (shouldAddExtraOutput ? EXTRA_OUTPUT_BYTES : 0);
       if (
         inAccum[feeAsset] + inputValue <=
         outAccum[feeAsset] + fee + threshold
@@ -122,7 +122,7 @@ module.exports = function liquidAssetsBlackjack(
       bytesAccum += inputBytes;
       inputs.push(input);
       // Verificar si se alcanzó la cantidad necesaria de valor de salida más el fee para todos los assets
-      shouldHadExtraOutput =
+      shouldAddExtraOutput =
         inAccum[feeAsset] +
           inputValue -
           (outAccum[feeAsset] + basePotentialFee) >
@@ -131,7 +131,7 @@ module.exports = function liquidAssetsBlackjack(
         inAccum[feeAsset] >=
         outAccum[feeAsset] +
           feeRate *
-            (bytesAccum + (shouldHadExtraOutput ? EXTRA_OUTPUT_BYTES : 0));
+            (bytesAccum + (shouldAddExtraOutput ? EXTRA_OUTPUT_BYTES : 0));
 
       if (allAssetsCovered) {
         if (outAccum[asset] < inAccum[asset]) {

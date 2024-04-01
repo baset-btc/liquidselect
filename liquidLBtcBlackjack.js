@@ -4,27 +4,35 @@ const utils = require("./utils");
 // worstcase: O(n)
 
 const EXTRA_OUTPUT_BYTES = 44 + 34;
+const EXTRA_ISSUANCE_BYTES = 66 + EXTRA_OUTPUT_BYTES;
 const threshold = utils.inputBytes({});
 const noResultOutput = { fee: 0 };
 
-module.exports = function liquidLBtcBlackjack(utxos, outputs, feeRate) {
+module.exports = function liquidLBtcBlackjack(
+  utxos,
+  outputs,
+  feeRate,
+  isIssuance = false
+) {
   if (!isFinite(utils.uintOrNaN(feeRate))) return noResultOutput;
 
   let bytesAccum = utils.transactionBytes([], outputs);
   let inAccum = 0;
   const inputs = [];
   const outAccum = utils.sumOrNaN(outputs);
+  let isIssuanceIncluded = false;
 
   for (let i = 0; i < utxos.length; i++) {
     const input = utxos[i];
     const inputBytes = utils.inputBytes(input);
     const basePotentialFee = feeRate * (bytesAccum + inputBytes);
     const inputValue = utils.uintOrNaN(input.value);
-    let shouldHadExtraOutput =
+    let shouldAddExtraOutput =
       inAccum + inputValue - (outAccum + basePotentialFee) > threshold;
     let fee =
       basePotentialFee +
-      feeRate * (shouldHadExtraOutput ? EXTRA_OUTPUT_BYTES : 0);
+      feeRate * (shouldAddExtraOutput ? EXTRA_OUTPUT_BYTES : 0) +
+      (isIssuance && !isIssuanceIncluded ? EXTRA_ISSUANCE_BYTES : 0);
 
     // would it waste value?
     if (inAccum + inputValue > outAccum + fee + threshold) continue;
@@ -36,8 +44,13 @@ module.exports = function liquidLBtcBlackjack(utxos, outputs, feeRate) {
     // go again?
     if (inAccum < outAccum + fee) continue;
 
+    if (isIssuance && !isIssuanceIncluded) {
+      bytesAccum += EXTRA_ISSUANCE_BYTES;
+      isIssuanceIncluded = true;
+    }
+
     // add extra output if needed
-    if (shouldHadExtraOutput) {
+    if (shouldAddExtraOutput) {
       const feeAfterExtraOutput = feeRate * (bytesAccum + EXTRA_OUTPUT_BYTES);
       const remainderAfterExtraOutput =
         utils.sumOrNaN(inputs) -

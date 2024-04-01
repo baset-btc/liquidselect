@@ -15,7 +15,13 @@ function utxoScore(x, feeRate) {
   return x.value - feeRate * utils.inputBytes(x);
 }
 
-function coinSelect(utxos, outputs, feeRate, isMainnet = true) {
+function coinSelect(
+  utxos,
+  outputs,
+  feeRate,
+  isMainnet = true,
+  isIssuance = false
+) {
   utxos = utxos.concat().sort(function (a, b) {
     return utxoScore(b, feeRate) - utxoScore(a, feeRate);
   });
@@ -29,27 +35,26 @@ function coinSelect(utxos, outputs, feeRate, isMainnet = true) {
     return acc[assetString] ? acc : { ...acc, [assetString]: true };
   }, {});
 
-  const hasIssuance = utxos.some((utxo) => utxo.issuance);
   // No tengo que tener outputs con el asset diferente//
   // Puedo tenerla solo si tengo un issuance
   let base;
   if (
-    !hasIssuance &&
+    !isIssuance &&
     (Object.keys(uniqueOutputAssets).length >= 2 ||
       (Object.keys(uniqueOutputAssets).length === 1 &&
         !Object.keys(uniqueOutputAssets).includes(feeAsset)))
   ) {
     base = liquidAssetsBlackjack(utxos, outputs, feeRate, isMainnet);
   } else {
-    base = liquidLBtcBlackjack(utxos, outputs, feeRate, isMainnet);
+    base = liquidLBtcBlackjack(utxos, outputs, feeRate, isIssuance);
   }
   if (base.inputs) return base;
 
-  return (!hasIssuance && Object.keys(uniqueOutputAssets).length >= 2) ||
+  return (!isIssuance && Object.keys(uniqueOutputAssets).length >= 2) ||
     (Object.keys(uniqueOutputAssets).length === 1 &&
       !Object.keys(uniqueOutputAssets).includes(feeAsset))
     ? liquidAssetsAccumulative(utxos, outputs, feeRate, isMainnet)
-    : liquidLBtcAccumulative(utxos, outputs, feeRate, isMainnet);
+    : liquidLBtcAccumulative(utxos, outputs, feeRate, isIssuance);
 }
 
 module.exports = coinSelect;

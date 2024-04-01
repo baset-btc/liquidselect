@@ -3,26 +3,30 @@ var utils = require("./utils");
 // add inputs until we reach or surpass the target value (or deplete)
 // worst-case: O(n)
 const EXTRA_OUTPUT_BYTES = 46 + 34; // Covers witness cases and address
+const EXTRA_ISSUANCE_BYTES = 66 + EXTRA_OUTPUT_BYTES;
 const threshold = utils.inputBytes({});
 const noResultOutput = { fee: 0 };
 
-module.exports = function liquidLBtcAccumulative(utxos, outputs, feeRate) {
+module.exports = function liquidLBtcAccumulative(
+  utxos,
+  outputs,
+  feeRate,
+  isIssuance = false
+) {
   if (!isFinite(utils.uintOrNaN(feeRate))) return noResultOutput;
-  console.log("da0", outputs);
   let bytesAccum = utils.transactionBytes([], outputs);
 
   let inAccum = 0;
   const inputs = [];
   let outAccum = utils.sumOrNaN(outputs);
-  console.log("byteAccum1", bytesAccum);
+
+  let isIssuanceIncluded = false;
 
   for (let i = 0; i < utxos.length; i++) {
     const utxo = utxos[i];
     const utxoBytes = utils.inputBytes(utxo);
     const utxoFee = feeRate * utxoBytes;
     const utxoValue = utils.uintOrNaN(utxo.value);
-
-    console.log("da2", utxo, utxoBytes, utxoFee, utxoValue);
 
     // skip detrimental input
     if (utxoFee > utxo.value) {
@@ -31,35 +35,36 @@ module.exports = function liquidLBtcAccumulative(utxos, outputs, feeRate) {
     }
 
     bytesAccum += utxoBytes;
-    console.log("byteAccum2", bytesAccum);
     inAccum += utxoValue;
     inputs.push(utxo);
 
     const baseFee = feeRate * bytesAccum;
-    let shouldHadExtraOutput =
+    let shouldAddExtraOutput =
       inAccum + utxoValue - (outAccum + baseFee) > threshold;
     var fee =
-      baseFee + feeRate * (shouldHadExtraOutput ? EXTRA_OUTPUT_BYTES : 0);
+      baseFee +
+      feeRate * (shouldAddExtraOutput ? EXTRA_OUTPUT_BYTES : 0) +
+      (isIssuance && !isIssuanceIncluded ? EXTRA_ISSUANCE_BYTES : 0);
 
     // go again?
     if (inAccum < outAccum + fee) continue;
 
+    if (isIssuance && !isIssuanceIncluded) {
+      bytesAccum += EXTRA_ISSUANCE_BYTES;
+      isIssuanceIncluded = true;
+    }
+
     // add extra output if needed
-    if (shouldHadExtraOutput) {
-      console.log("bytesAccum3", bytesAccum);
+    if (shouldAddExtraOutput) {
       bytesAccum += EXTRA_OUTPUT_BYTES;
-      console.log("bytesAccum4", bytesAccum);
       const feeAfterExtraOutput = feeRate * bytesAccum;
       const remainderAfterExtraOutput =
         utils.sumOrNaN(inputs) -
         (utils.sumOrNaN(outputs) + feeAfterExtraOutput);
-      console.log("var0", feeAfterExtraOutput, remainderAfterExtraOutput);
       outputs = outputs.concat({
         value: Math.floor(remainderAfterExtraOutput),
       });
     }
-
-    console.log("var", bytesAccum, EXTRA_OUTPUT_BYTES, inputs, outputs);
 
     fee = utils.sumOrNaN(inputs) - utils.sumOrNaN(outputs);
 

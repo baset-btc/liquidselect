@@ -110,7 +110,7 @@ module.exports = function liquidAssetsAccumulative(
     inputs.push(input);
 
     const basePotentialFee = feeRate * bytesAccum;
-    shouldHadExtraOutput =
+    shouldAddExtraOutput =
       inAccum[feeAsset] +
         inputValue -
         ((outAccum[feeAsset] || 0) + basePotentialFee) >
@@ -119,7 +119,7 @@ module.exports = function liquidAssetsAccumulative(
       inAccum[feeAsset] >=
       (outAccum[feeAsset] || 0) +
         feeRate *
-          (bytesAccum + (shouldHadExtraOutput ? EXTRA_OUTPUT_BYTES : 0));
+          (bytesAccum + (shouldAddExtraOutput ? EXTRA_OUTPUT_BYTES : 0));
 
     if (feeAssetCovered) {
       if ((outAccum[feeAsset] || 0) < inAccum[feeAsset]) {
@@ -148,35 +148,4 @@ module.exports = function liquidAssetsAccumulative(
   }
 
   return noResultOutput;
-
-  // for (let i = 0; i < utxos.length; i++) {
-  //   var utxo = utxos[i];
-  //   var utxoBytes = utils.inputBytes(utxo);
-  //   var utxoFee = feeRate * utxoBytes;
-  //   var utxoValue = utils.uintOrNaN(utxo.value);
-
-  //   // skip detrimental input
-  //   if (utxoFee > utxo.value) {
-  //     if (i === utxos.length - 1)
-  //       return { fee: feeRate * (bytesAccum + utxoBytes) };
-  //     continue;
-  //   }
-
-  //   bytesAccum += utxoBytes;
-  //   inAccum += utxoValue;
-  //   inputs.push(utxo);
-
-  //   var baseFee = feeRate * bytesAccum;
-  //   var shouldHadExtraOutput = netAccum > 0 && netAccum + baseFee > threshold;
-  //   var fee = baseFee + feeRate * (shouldHadExtraOutput ? BLANK_OUTPUT : 0);
-
-  //   var fee = feeRate * bytesAccum;
-
-  //   // go again?
-  //   if (inAccum < outAccum + fee) continue;
-
-  //   return utils.finalize(inputs, outputs, feeRate);
-  // }
-
-  // return { fee: Math.round(feeRate * bytesAccum) };
 };
