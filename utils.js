@@ -19,19 +19,17 @@ function scriptBytes(script) {
   return encodingLength(length) + length;
 }
 
-function inputBytes(input, _ALLOW_WITNESS = false) {
+function _inputBytes(input, _ALLOW_WITNESS = false) {
   return (
     TX_INPUT_BASE +
     scriptBytes(input.witnessUtxo?.script) +
     (input.issuance
       ? TX_INPUT_ISSUANCE_BASE +
-        input.issuance.assetAmount.length +
-        input.issuance.tokenAmount.length
+        1 + // For future purposes add input.issuance.assetAmount.length
+        1 // For future purposes add input.issuance.tokenAmount.length
       : 0) +
     (_ALLOW_WITNESS
-      ? scriptBytes(input.witnessUtxo?.issuanceRangeProof) +
-        scriptBytes(input.witnessUtxo?.inflationRangeProof) +
-        TX_INPUT_WITNESS +
+      ? TX_INPUT_WITNESS +
         encodingLength(input.witnessUtxo?.peginWitness) +
         (input.witnessUtxo?.peginWitness
           ? input.witnessUtxo?.peginWitness?.reduce(function (a, x) {
@@ -42,21 +40,30 @@ function inputBytes(input, _ALLOW_WITNESS = false) {
   );
 }
 
+function inputBytes(input) {
+  return (
+    (_inputBytes(input, false) * (WITNESS_SCALE_FACTOR - 1) +
+      _inputBytes(input, true) +
+      WITNESS_SCALE_FACTOR -
+      1) /
+    WITNESS_SCALE_FACTOR
+  );
+}
+
 function outputBytes(output, _ALLOW_WITNESS = false) {
   return (
     9 + // value
     1 + // nonce
+    // 1 + // 0a added to asset
     (output.asset ? output.asset.length : 0) +
-    scriptBytes(output.script) +
-    (_ALLOW_WITNESS
-      ? scriptBytes(output.surjectionProof) + scriptBytes(output.rangeProof)
-      : 0)
+    (output.script ? scriptBytes(output.script) : 23) +
+    (_ALLOW_WITNESS ? 2 : 0)
   );
 }
 
-function dustThreshold(output, feeRate) {
+function dustThreshold(feeRate) {
   /* ... classify the output for input estimate  */
-  return inputBytes({}) * feeRate;
+  return inputBytes({}, true) * feeRate;
 }
 
 function __byteLength(inputs, outputs, _ALLOW_WITNESS = false) {
@@ -65,7 +72,7 @@ function __byteLength(inputs, outputs, _ALLOW_WITNESS = false) {
     encodingLength(inputs.length) +
     encodingLength(outputs.length) +
     inputs.reduce(function (a, x) {
-      return a + inputBytes(x, _ALLOW_WITNESS);
+      return a + _inputBytes(x, _ALLOW_WITNESS);
     }, 0) +
     outputs.reduce(function (a, x) {
       return a + outputBytes(x, _ALLOW_WITNESS);
@@ -73,8 +80,6 @@ function __byteLength(inputs, outputs, _ALLOW_WITNESS = false) {
     TX_OUTPUT_FEE
   );
 }
-
-var BLANK_OUTPUT = outputBytes({});
 
 function transactionBytes(inputs, outputs) {
   // Estimate fee without fee output
@@ -104,30 +109,8 @@ function sumOrNaN(range) {
   }, 0);
 }
 
-function finalize(inputs, outputs, feeRate) {
-  var bytesAccum = transactionBytes(inputs, outputs);
-  var feeAfterExtraOutput = feeRate * (bytesAccum + BLANK_OUTPUT);
-  var remainderAfterExtraOutput =
-    sumOrNaN(inputs) - (sumOrNaN(outputs) + feeAfterExtraOutput);
-
-  // is it worth a change output?
-  if (remainderAfterExtraOutput > dustThreshold({}, feeRate)) {
-    outputs = outputs.concat({ value: Math.round(remainderAfterExtraOutput) });
-  }
-
-  var fee = sumOrNaN(inputs) - sumOrNaN(outputs);
-  if (!isFinite(fee)) return { fee: Math.round(feeRate * bytesAccum) };
-
-  return {
-    inputs: inputs,
-    outputs: outputs,
-    fee: fee,
-  };
-}
-
 module.exports = {
   dustThreshold: dustThreshold,
-  finalize: finalize,
   inputBytes: inputBytes,
   outputBytes: outputBytes,
   sumOrNaN: sumOrNaN,
