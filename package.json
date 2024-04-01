@@ -1,9 +1,9 @@
 {
-  "name": "bitcoinselect",
+  "name": "liquidselect",
   "version": "1.0.0",
-  "description": "A transaction input selection module for bitcoin.",
+  "description": "A transaction input selection module for liquid.",
   "keywords": [
-    "bitcoinselect",
+    "liquidselect",
     "coin",
     "unspents",
     "wallet",
@@ -16,16 +16,13 @@
     "optimizing",
     "bitcoin"
   ],
-  "homepage": "https://github.com/ChrisCho-H/bitcoinselect",
-  "bugs": {
-    "url": "https://github.com/ChrisCho-H/bitcoinselect/issues"
-  },
   "license": "MIT",
-  "author": "Chris Hyunhum Cho",
+  "author": "Agustin Daverede",
   "files": [
-    "accumulative.js",
-    "blackjack.js",
-    "break.js",
+    "liquidAssetsAccumulative.js",
+    "liquidAssetsBlackjack.js",
+    "liquidLBtcAccumulative.js",
+    "liquidLBtcBlackjack.js",
     "index.js",
     "split.js",
     "utils.js",
@@ -33,10 +30,6 @@
   ],
   "main": "index.js",
   "types": "index.d.ts",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/ChrisCho-H/bitcoinselect.git"
-  },
   "scripts": {
     "coverage": "nyc --check-coverage --branches 100 --functions 100 tape test/*.js",
     "standard": "standard",
