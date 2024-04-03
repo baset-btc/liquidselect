@@ -37,10 +37,10 @@ module.exports = function liquidAssetsAccumulative(
   });
 
   const nonFeeAssetInputs = utxos.filter(
-    (utxo) => utxo.witnessUtxo.asset !== feeAsset
+    (utxo) => utxo.witnessUtxo.asset.toString("hex") !== feeAsset
   );
   const feeAssetInputs = utxos.filter(
-    (utxo) => utxo.witnessUtxo.asset === feeAsset
+    (utxo) => utxo.witnessUtxo.asset.toString("hex") === feeAsset
   );
 
   if (
@@ -50,7 +50,7 @@ module.exports = function liquidAssetsAccumulative(
         nonFeeAssetInputs.findIndex(
           (valInput) =>
             valInput.value >= outAccum[valOutputAsset] &&
-            valInput.asset === valOutputAsset
+            valInput.asset.toString("hex") === valOutputAsset
         ) === -1
     )
   ) {
@@ -63,14 +63,14 @@ module.exports = function liquidAssetsAccumulative(
 
     Object.keys(outAccum).forEach((asset) => {
       if (!inAccum[asset]) inAccum[asset] = 0;
-      if (input.witnessUtxo.asset === asset) {
+      if (input.witnessUtxo.asset.toString("hex") === asset) {
         const inputValue = utils.uintOrNaN(input.value);
         inAccum[asset] += inputValue;
+        bytesAccum += inputBytes;
+        inputs.push(input);
       }
     });
 
-    bytesAccum += inputBytes;
-    inputs.push(input);
     // Verificar si se alcanzó la cantidad necesaria de valor de salida más el fee para todos los assets
     const allAssetsCovered = Object.keys(outAccum).every(
       (asset) => inAccum[asset] >= outAccum[asset]
@@ -101,13 +101,13 @@ module.exports = function liquidAssetsAccumulative(
 
     const inputValue = utils.uintOrNaN(input.value);
     if (!inAccum[feeAsset]) inAccum[feeAsset] = 0;
-    if (input.witnessUtxo.asset === feeAsset) {
+    if (input.witnessUtxo.asset.toString("hex") === feeAsset) {
       inAccum[feeAsset] += inputValue;
+      bytesAccum += inputBytes;
+      inputs.push(input);
     }
 
     // Si todos los assets están cubiertos, agregar la entrada y actualizar los valores acumulados
-    bytesAccum += inputBytes;
-    inputs.push(input);
 
     const basePotentialFee = feeRate * bytesAccum;
     shouldAddExtraOutput =

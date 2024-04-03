@@ -36,10 +36,10 @@ module.exports = function liquidAssetsBlackjack(
   });
 
   const nonFeeAssetInputs = utxos.filter(
-    (utxo) => utxo.witnessUtxo.asset !== feeAsset
+    (utxo) => utxo.witnessUtxo.asset.toString("hex") !== feeAsset
   );
   const feeAssetInputs = utxos.filter(
-    (utxo) => utxo.witnessUtxo.asset === feeAsset
+    (utxo) => utxo.witnessUtxo.asset.toString("hex") === feeAsset
   );
 
   // Primera pasada para validar los assets non lbtc. Si esta no tiene exito, se devuelve fee 0
@@ -47,15 +47,14 @@ module.exports = function liquidAssetsBlackjack(
     const input = nonFeeAssetInputs[i];
     const inputBytes = utils.inputBytes(input);
 
-    let assetsCovered = true;
+    let assetsCovered = false;
     Object.keys(outAccum).forEach((asset) => {
       if (!inAccum[asset]) inAccum[asset] = 0;
-      if (input.witnessUtxo.asset === asset) {
+      if (input.witnessUtxo.asset.toString("hex") === asset) {
         const inputValue = utils.uintOrNaN(input.value);
         if (inAccum[asset] + inputValue <= outAccum[asset]) {
           inAccum[asset] += inputValue;
-        } else {
-          assetsCovered = false;
+          assetsCovered = true;
         }
       }
     });
@@ -94,9 +93,9 @@ module.exports = function liquidAssetsBlackjack(
     const input = feeAssetInputs[i];
     const inputBytes = utils.inputBytes(input);
 
-    let assetsCovered = true;
+    let assetsCovered = false;
     if (!inAccum[feeAsset]) inAccum[feeAsset] = 0;
-    if (input.witnessUtxo.asset === feeAsset) {
+    if (input.witnessUtxo.asset.toString("hex") === feeAsset) {
       const basePotentialFee = feeRate * (bytesAccum + inputBytes);
       const inputValue = utils.uintOrNaN(input.value);
       let shouldAddExtraOutput =
@@ -112,8 +111,7 @@ module.exports = function liquidAssetsBlackjack(
         outAccum[feeAsset] + fee + threshold
       ) {
         inAccum[feeAsset] += inputValue;
-      } else {
-        assetsCovered = false;
+        assetsCovered = true;
       }
     }
 
