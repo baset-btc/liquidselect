@@ -1,8 +1,6 @@
 const utils = require("./utils");
 
-const EXTRA_OUTPUT_BYTES = 46 + 34; // Covers witness cases and address
 const threshold = utils.inputBytes({});
-const noResultOutput = { fee: 0 };
 
 // add inputs until we reach or surpass the target value (or deplete)
 // worst-case: O(n)
@@ -12,7 +10,7 @@ module.exports = function liquidAssetsAccumulative(
   feeRate,
   isMainnet
 ) {
-  if (!isFinite(utils.uintOrNaN(feeRate))) return noResultOutput;
+  if (!isFinite(utils.uintOrNaN(feeRate))) return utils.noResultOutput();
 
   const feeAsset = isMainnet
     ? "6f0279e9ed041c3d710a9f57d0c02928416460c4b722ae3457a11eec381c526d"
@@ -54,7 +52,7 @@ module.exports = function liquidAssetsAccumulative(
         ) === -1
     )
   ) {
-    return noResultOutput;
+    return utils.noResultOutput();
   }
 
   for (let i = 0; i < nonFeeAssetInputs.length; i++) {
@@ -91,7 +89,7 @@ module.exports = function liquidAssetsAccumulative(
         value: Math.round(remainderAfterExtraOutput),
       });
     } else if (outAccum[asset] > inAccum[asset]) {
-      return noResultOutput;
+      return utils.noResultOutput();
     }
   });
 
@@ -119,15 +117,16 @@ module.exports = function liquidAssetsAccumulative(
       inAccum[feeAsset] >=
       (outAccum[feeAsset] || 0) +
         feeRate *
-          (bytesAccum + (shouldAddExtraOutput ? EXTRA_OUTPUT_BYTES : 0));
+          (bytesAccum + (shouldAddExtraOutput ? utils.extraOutputBytes() : 0));
 
     if (feeAssetCovered) {
       if ((outAccum[feeAsset] || 0) < inAccum[feeAsset]) {
-        const feeAfterExtraOutput = feeRate * (bytesAccum + EXTRA_OUTPUT_BYTES);
+        const feeAfterExtraOutput =
+          feeRate * (bytesAccum + utils.extraOutputBytes());
         const remainderAfterExtraOutput =
           inAccum[feeAsset] - ((outAccum[feeAsset] || 0) + feeAfterExtraOutput);
         if (remainderAfterExtraOutput > threshold) {
-          bytesAccum += EXTRA_OUTPUT_BYTES;
+          bytesAccum += utils.extraOutputBytes();
           resOutputs = resOutputs.concat({
             value: Math.round(remainderAfterExtraOutput),
           });
@@ -137,7 +136,7 @@ module.exports = function liquidAssetsAccumulative(
         }
       }
 
-      if (!isFinite(fee)) return noResultOutput;
+      if (!isFinite(fee)) return utils.noResultOutput();
 
       return {
         inputs: inputs,
@@ -147,5 +146,5 @@ module.exports = function liquidAssetsAccumulative(
     }
   }
 
-  return noResultOutput;
+  return utils.noResultOutput();
 };

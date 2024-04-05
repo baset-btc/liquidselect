@@ -2,11 +2,7 @@ const utils = require("./utils");
 
 // only add inputs if they don't bust the target value (aka, exact match)
 // worstcase: O(n)
-
-const EXTRA_OUTPUT_BYTES = 44 + 34;
-const EXTRA_ISSUANCE_BYTES = 66 + EXTRA_OUTPUT_BYTES;
 const threshold = utils.inputBytes({});
-const noResultOutput = { fee: 0 };
 
 module.exports = function liquidLBtcBlackjack(
   utxos,
@@ -14,7 +10,7 @@ module.exports = function liquidLBtcBlackjack(
   feeRate,
   isIssuance = false
 ) {
-  if (!isFinite(utils.uintOrNaN(feeRate))) return noResultOutput;
+  if (!isFinite(utils.uintOrNaN(feeRate))) return utils.noResultOutput();
 
   let bytesAccum = utils.transactionBytes([], outputs);
   let inAccum = 0;
@@ -31,8 +27,8 @@ module.exports = function liquidLBtcBlackjack(
       inAccum + inputValue - (outAccum + basePotentialFee) > threshold;
     let fee =
       basePotentialFee +
-      feeRate * (shouldAddExtraOutput ? EXTRA_OUTPUT_BYTES : 0) +
-      (isIssuance && !isIssuanceIncluded ? EXTRA_ISSUANCE_BYTES : 0);
+      feeRate * (shouldAddExtraOutput ? utils.extraOutputBytes() : 0) +
+      (isIssuance && !isIssuanceIncluded ? utils.extraIssuanceBytes() : 0);
 
     // would it waste value?
     if (inAccum + inputValue > outAccum + fee + threshold) continue;
@@ -45,13 +41,14 @@ module.exports = function liquidLBtcBlackjack(
     if (inAccum < outAccum + fee) continue;
 
     if (isIssuance && !isIssuanceIncluded) {
-      bytesAccum += EXTRA_ISSUANCE_BYTES;
+      bytesAccum += utils.extraIssuanceBytes();
       isIssuanceIncluded = true;
     }
 
     // add extra output if needed
     if (shouldAddExtraOutput) {
-      const feeAfterExtraOutput = feeRate * (bytesAccum + EXTRA_OUTPUT_BYTES);
+      const feeAfterExtraOutput =
+        feeRate * (bytesAccum + utils.extraOutputBytes());
       const remainderAfterExtraOutput =
         utils.sumOrNaN(inputs) -
         (utils.sumOrNaN(outputs) + feeAfterExtraOutput);
@@ -62,7 +59,7 @@ module.exports = function liquidLBtcBlackjack(
 
     fee = utils.sumOrNaN(inputs) - utils.sumOrNaN(outputs);
 
-    if (!isFinite(fee)) return noResultOutput;
+    if (!isFinite(fee)) return utils.noResultOutput();
 
     return {
       inputs: inputs,
@@ -71,5 +68,5 @@ module.exports = function liquidLBtcBlackjack(
     };
   }
 
-  return noResultOutput;
+  return utils.noResultOutput();
 };

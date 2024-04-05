@@ -1,7 +1,5 @@
 const utils = require("./utils");
 
-const EXTRA_OUTPUT_BYTES = 44 + 34;
-const noResultOutput = { fee: 0 };
 const threshold = utils.inputBytes({});
 
 // only add inputs if they don't bust the target value (aka, exact match)
@@ -12,7 +10,7 @@ module.exports = function liquidAssetsBlackjack(
   feeRate,
   isMainnet = true
 ) {
-  if (!isFinite(utils.uintOrNaN(feeRate))) return noResultOutput;
+  if (!isFinite(utils.uintOrNaN(feeRate))) return utils.noResultOutput();
 
   const feeAsset = isMainnet
     ? "6f0279e9ed041c3d710a9f57d0c02928416460c4b722ae3457a11eec381c526d"
@@ -85,7 +83,7 @@ module.exports = function liquidAssetsBlackjack(
         value: Math.round(remainderAfterExtraOutput),
       });
     } else if (outAccum[asset] > inAccum[asset]) {
-      return noResultOutput;
+      return utils.noResultOutput();
     }
   });
 
@@ -105,7 +103,7 @@ module.exports = function liquidAssetsBlackjack(
         threshold;
       let fee =
         basePotentialFee +
-        feeRate * (shouldAddExtraOutput ? EXTRA_OUTPUT_BYTES : 0);
+        feeRate * (shouldAddExtraOutput ? utils.extraOutputBytes() : 0);
       if (
         inAccum[feeAsset] + inputValue <=
         outAccum[feeAsset] + fee + threshold
@@ -129,11 +127,12 @@ module.exports = function liquidAssetsBlackjack(
         inAccum[feeAsset] >=
         outAccum[feeAsset] +
           feeRate *
-            (bytesAccum + (shouldAddExtraOutput ? EXTRA_OUTPUT_BYTES : 0));
+            (bytesAccum +
+              (shouldAddExtraOutput ? utils.extraOutputBytes() : 0));
 
       if (allAssetsCovered) {
         if (outAccum[asset] < inAccum[asset]) {
-          bytesAccum += EXTRA_OUTPUT_BYTES;
+          bytesAccum += utils.extraOutputBytes();
           const feeAfterExtraOutput = feeRate * bytesAccum;
           const remainderAfterExtraOutput =
             inAccum[feeAsset] - (outAccum[feeAsset] + feeAfterExtraOutput);
@@ -144,7 +143,7 @@ module.exports = function liquidAssetsBlackjack(
 
         fee = Math.round(bytesAccum * feeRate);
 
-        if (!isFinite(fee)) return noResultOutput;
+        if (!isFinite(fee)) return utils.noResultOutput();
 
         return {
           inputs: inputs,
@@ -155,5 +154,5 @@ module.exports = function liquidAssetsBlackjack(
     }
   }
 
-  return noResultOutput;
+  return utils.noResultOutput();
 };

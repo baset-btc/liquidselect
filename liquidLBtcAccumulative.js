@@ -2,10 +2,7 @@ var utils = require("./utils");
 
 // add inputs until we reach or surpass the target value (or deplete)
 // worst-case: O(n)
-const EXTRA_OUTPUT_BYTES = 46 + 34; // Covers witness cases and address
-const EXTRA_ISSUANCE_BYTES = 66 + EXTRA_OUTPUT_BYTES;
 const threshold = utils.inputBytes({});
-const noResultOutput = { fee: 0 };
 
 module.exports = function liquidLBtcAccumulative(
   utxos,
@@ -13,7 +10,7 @@ module.exports = function liquidLBtcAccumulative(
   feeRate,
   isIssuance = false
 ) {
-  if (!isFinite(utils.uintOrNaN(feeRate))) return noResultOutput;
+  if (!isFinite(utils.uintOrNaN(feeRate))) return utils.noResultOutput();
   let bytesAccum = utils.transactionBytes([], outputs);
 
   let inAccum = 0;
@@ -30,7 +27,7 @@ module.exports = function liquidLBtcAccumulative(
 
     // skip detrimental input
     if (utxoFee > utxo.value) {
-      if (i === utxos.length - 1) return noResultOutput;
+      if (i === utxos.length - 1) return utils.noResultOutput();
       continue;
     }
 
@@ -43,20 +40,20 @@ module.exports = function liquidLBtcAccumulative(
       inAccum + utxoValue - (outAccum + baseFee) > threshold;
     var fee =
       baseFee +
-      feeRate * (shouldAddExtraOutput ? EXTRA_OUTPUT_BYTES : 0) +
-      (isIssuance && !isIssuanceIncluded ? EXTRA_ISSUANCE_BYTES : 0);
+      feeRate * (shouldAddExtraOutput ? utils.extraOutputBytes() : 0) +
+      (isIssuance && !isIssuanceIncluded ? utils.extraIssuanceBytes() : 0);
 
     // go again?
     if (inAccum < outAccum + fee) continue;
 
     if (isIssuance && !isIssuanceIncluded) {
-      bytesAccum += EXTRA_ISSUANCE_BYTES;
+      bytesAccum += utils.extraIssuanceBytes();
       isIssuanceIncluded = true;
     }
 
     // add extra output if needed
     if (shouldAddExtraOutput) {
-      bytesAccum += EXTRA_OUTPUT_BYTES;
+      bytesAccum += utils.extraOutputBytes();
       const feeAfterExtraOutput = feeRate * bytesAccum;
       const remainderAfterExtraOutput =
         utils.sumOrNaN(inputs) -
@@ -68,7 +65,7 @@ module.exports = function liquidLBtcAccumulative(
 
     fee = utils.sumOrNaN(inputs) - utils.sumOrNaN(outputs);
 
-    if (!isFinite(fee)) return noResultOutput;
+    if (!isFinite(fee)) return utils.noResultOutput();
 
     return {
       inputs: inputs,
@@ -77,5 +74,5 @@ module.exports = function liquidLBtcAccumulative(
     };
   }
 
-  return noResultOutput;
+  return utils.noResultOutput();
 };

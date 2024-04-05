@@ -2,7 +2,8 @@ const varuint = require("varuint-bitcoin");
 // baseline estimates, used to improve performance
 var TX_EMPTY_SIZE = 4 + 1 + 4;
 var TX_INPUT_BASE = 32 + 4 + 4;
-var TX_INPUT_ISSUANCE_BASE = 64;
+const EXTRA_OUTPUT_BYTES = 46 + 22; // Covers witness cases and address
+const EXTRA_ISSUANCE_BYTES = 66 + EXTRA_OUTPUT_BYTES;
 var TX_OUTPUT_FEE = 9 + 1 + 33 + 1; // value + nonce + asset + scriptBytes
 // issuanceRangeProof + inflationRangeProof + witness.length + signature.length + pubkey.length + 1 byte each to represent the length of signature and pubkey
 var TX_INPUT_WITNESS = 1 + 1 + 1 + 72 + 33 + 1 + 1;
@@ -54,7 +55,7 @@ function outputBytes(output, _ALLOW_WITNESS = false) {
   return (
     9 + // value
     1 + // nonce
-    // 1 + // 0a added to asset
+    1 + // 0a added to asset
     (output.asset ? output.asset.length : 0) +
     (output.script ? scriptBytes(output.script) : 23) +
     (_ALLOW_WITNESS ? 2 : 0)
@@ -109,6 +110,18 @@ function sumOrNaN(range) {
   }, 0);
 }
 
+function extraOutputBytes() {
+  return EXTRA_OUTPUT_BYTES;
+}
+
+function extraIssuanceBytes() {
+  return EXTRA_ISSUANCE_BYTES;
+}
+
+function noResultOutput() {
+  return { fee: 0 };
+}
+
 module.exports = {
   dustThreshold: dustThreshold,
   inputBytes: inputBytes,
@@ -117,4 +130,7 @@ module.exports = {
   sumForgiving: sumForgiving,
   transactionBytes: transactionBytes,
   uintOrNaN: uintOrNaN,
+  extraOutputBytes: extraOutputBytes,
+  extraIssuanceBytes: extraIssuanceBytes,
+  noResultOutput: noResultOutput,
 };
