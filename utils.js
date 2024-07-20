@@ -122,6 +122,19 @@ function noResultOutput() {
   return { fee: 0 };
 }
 
+function finalize(inputs, outputs, feeRate) {
+  const bytesAccum = transactionBytes(inputs, outputs);
+  const fee = sumOrNaN(inputs) - sumOrNaN(outputs);
+
+  if (!isFinite(fee)) return { fee: Math.round(feeRate * bytesAccum) };
+
+  return {
+    inputs: inputs,
+    outputs: outputs,
+    fee: fee,
+  };
+}
+
 module.exports = {
   dustThreshold: dustThreshold,
   inputBytes: inputBytes,
@@ -133,4 +146,5 @@ module.exports = {
   extraOutputBytes: extraOutputBytes,
   extraIssuanceBytes: extraIssuanceBytes,
   noResultOutput: noResultOutput,
+  finalize: finalize,
 };
