@@ -2,7 +2,7 @@ const varuint = require("varuint-bitcoin");
 // baseline estimates, used to improve performance
 var TX_EMPTY_SIZE = 4 + 1 + 4;
 var TX_INPUT_BASE = 32 + 4 + 4;
-const EXTRA_OUTPUT_BYTES = 46 + 22; // Covers witness cases and address
+const EXTRA_OUTPUT_BYTES = 46 + 32; // Covers witness cases and address
 const EXTRA_ISSUANCE_BYTES = 66 + EXTRA_OUTPUT_BYTES;
 var TX_OUTPUT_FEE = 9 + 1 + 33 + 1; // value + nonce + asset + scriptBytes
 // issuanceRangeProof + inflationRangeProof + witness.length + signature.length + pubkey.length + 1 byte each to represent the length of signature and pubkey
