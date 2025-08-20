@@ -37,7 +37,7 @@ module.exports = function liquidLBtcAccumulative(
 
     const baseFee = feeRate * bytesAccum;
     let shouldAddExtraOutput =
-      inAccum + utxoValue - (outAccum + baseFee) > threshold;
+      inAccum - (outAccum + baseFee) > threshold;
     var fee =
       baseFee +
       feeRate * (shouldAddExtraOutput ? utils.extraOutputBytes() : 0) +

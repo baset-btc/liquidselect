@@ -48,7 +48,7 @@ module.exports = function liquidAssetsAccumulative(
         nonFeeAssetInputs.findIndex(
           (valInput) =>
             valInput.value >= outAccum[valOutputAsset] &&
-            valInput.asset.toString("hex") === valOutputAsset
+            valInput.witnessUtxo.asset.toString("hex") === valOutputAsset
         ) === -1
     )
   ) {
@@ -59,7 +59,7 @@ module.exports = function liquidAssetsAccumulative(
     const input = nonFeeAssetInputs[i];
     const inputBytes = utils.inputBytes(input);
 
-    Object.keys(outAccum).forEach((asset) => {
+    for (const asset of Object.keys(outAccum)) {
       if (!inAccum[asset]) inAccum[asset] = 0;
       if (input.witnessUtxo.asset.toString("hex") === asset) {
         const inputValue = utils.uintOrNaN(input.value);
@@ -67,7 +67,7 @@ module.exports = function liquidAssetsAccumulative(
         bytesAccum += inputBytes;
         inputs.push(input);
       }
-    });
+    }
 
     // Verificar si se alcanzó la cantidad necesaria de valor de salida más el fee para todos los assets
     const allAssetsCovered = Object.keys(outAccum).every(
@@ -78,9 +78,9 @@ module.exports = function liquidAssetsAccumulative(
     }
   }
 
-  Object.keys(outAccum).forEach((asset) => {
+  for (const asset of Object.keys(outAccum)) {
     if (outAccum[asset] < inAccum[asset]) {
-      const extraOutputBytes = utils.outputBytes({ asset });
+      const extraOutputBytes = utils.outputBytes({ asset: Buffer.from(asset, 'hex') });
       bytesAccum += extraOutputBytes;
 
       const remainderAfterExtraOutput = inAccum[asset] - outAccum[asset];
@@ -91,11 +91,12 @@ module.exports = function liquidAssetsAccumulative(
     } else if (outAccum[asset] > inAccum[asset]) {
       return utils.noResultOutput();
     }
-  });
+  }
 
   for (let i = 0; i < feeAssetInputs.length; i++) {
     const input = feeAssetInputs[i];
     const inputBytes = utils.inputBytes(input);
+    let fee;
 
     const inputValue = utils.uintOrNaN(input.value);
     if (!inAccum[feeAsset]) inAccum[feeAsset] = 0;
@@ -108,9 +109,8 @@ module.exports = function liquidAssetsAccumulative(
     // Si todos los assets están cubiertos, agregar la entrada y actualizar los valores acumulados
 
     const basePotentialFee = feeRate * bytesAccum;
-    shouldAddExtraOutput =
-      inAccum[feeAsset] +
-        inputValue -
+    const shouldAddExtraOutput =
+      inAccum[feeAsset] -
         ((outAccum[feeAsset] || 0) + basePotentialFee) >
       threshold;
     const feeAssetCovered =
@@ -132,7 +132,7 @@ module.exports = function liquidAssetsAccumulative(
           });
           fee = Math.round(bytesAccum * feeRate); // TODO: Fix bug en el blackjack
         } else {
-          fee = inAccum[feeAsset];
+          fee = inAccum[feeAsset] - ((outAccum[feeAsset] || 0));
         }
       }
 

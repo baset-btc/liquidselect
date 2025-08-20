@@ -20,7 +20,7 @@ module.exports = function liquidAssetsBlackjack(
   let inAccum = {};
   let outAccum = {};
 
-  const resOutputs = outputs.map((utxo) => ({
+  let resOutputs = outputs.map((utxo) => ({
     ...utxo,
     asset: utxo.asset.toString("hex"),
   }));
@@ -44,12 +44,13 @@ module.exports = function liquidAssetsBlackjack(
   for (let i = 0; i < nonFeeAssetInputs.length; i++) {
     const input = nonFeeAssetInputs[i];
     const inputBytes = utils.inputBytes(input);
+    const inputValue = utils.uintOrNaN(input.value);
 
     let assetsCovered = false;
     Object.keys(outAccum).forEach((asset) => {
       if (!inAccum[asset]) inAccum[asset] = 0;
       if (input.witnessUtxo.asset.toString("hex") === asset) {
-        const inputValue = utils.uintOrNaN(input.value);
+        
         if (inAccum[asset] + inputValue <= outAccum[asset]) {
           inAccum[asset] += inputValue;
           assetsCovered = true;
@@ -72,9 +73,9 @@ module.exports = function liquidAssetsBlackjack(
 
   // Si algun mont in > out -> Se debe agregar output extra para ese asset
   // Si todos los assets están cubiertos, agregar la entrada y actualizar los valores acumulados
-  Object.keys(outAccum).forEach((asset) => {
+  for (const asset of Object.keys(outAccum)) {
     if (outAccum[asset] < inAccum[asset]) {
-      const extraOutputBytes = utils.outputBytes({ asset });
+      const extraOutputBytes = utils.outputBytes({ asset: Buffer.from(asset, 'hex') });
       bytesAccum += extraOutputBytes;
 
       const remainderAfterExtraOutput = inAccum[asset] - outAccum[asset];
@@ -85,25 +86,25 @@ module.exports = function liquidAssetsBlackjack(
     } else if (outAccum[asset] > inAccum[asset]) {
       return utils.noResultOutput();
     }
-  });
+  }
 
   for (let i = 0; i < feeAssetInputs.length; i++) {
     const input = feeAssetInputs[i];
     const inputBytes = utils.inputBytes(input);
-
-    let assetsCovered = false;
-    if (!inAccum[feeAsset]) inAccum[feeAsset] = 0;
-    if (input.witnessUtxo.asset.toString("hex") === feeAsset) {
-      const basePotentialFee = feeRate * (bytesAccum + inputBytes);
-      const inputValue = utils.uintOrNaN(input.value);
-      let shouldAddExtraOutput =
+    const inputValue = utils.uintOrNaN(input.value);
+    const basePotentialFee = feeRate * (bytesAccum + inputBytes);
+    let shouldAddExtraOutput =
         inAccum[feeAsset] +
           inputValue -
           (outAccum[feeAsset] + basePotentialFee) >
         threshold;
-      let fee =
+    let fee =
         basePotentialFee +
         feeRate * (shouldAddExtraOutput ? utils.extraOutputBytes() : 0);
+
+    let assetsCovered = false;
+    if (!inAccum[feeAsset]) inAccum[feeAsset] = 0;
+    if (input.witnessUtxo.asset.toString("hex") === feeAsset) {
       if (
         inAccum[feeAsset] + inputValue <=
         outAccum[feeAsset] + fee + threshold
@@ -119,8 +120,8 @@ module.exports = function liquidAssetsBlackjack(
       inputs.push(input);
       // Verificar si se alcanzó la cantidad necesaria de valor de salida más el fee para todos los assets
       shouldAddExtraOutput =
-        inAccum[feeAsset] +
-          inputValue -
+        inAccum[feeAsset] + ((input.witnessUtxo.asset.toString("hex") === feeAsset &&inAccum[feeAsset] + inputValue <=
+          outAccum[feeAsset] + fee + threshold) ? 0 : inputValue) -
           (outAccum[feeAsset] + basePotentialFee) >
         threshold;
       const allAssetsCovered =
@@ -131,17 +132,22 @@ module.exports = function liquidAssetsBlackjack(
               (shouldAddExtraOutput ? utils.extraOutputBytes() : 0));
 
       if (allAssetsCovered) {
-        if (outAccum[asset] < inAccum[asset]) {
-          bytesAccum += utils.extraOutputBytes();
-          const feeAfterExtraOutput = feeRate * bytesAccum;
+        if (outAccum[feeAsset] < inAccum[feeAsset]) {
+          const feeAfterExtraOutput = feeRate * (bytesAccum + utils.extraOutputBytes());
           const remainderAfterExtraOutput =
             inAccum[feeAsset] - (outAccum[feeAsset] + feeAfterExtraOutput);
-          resOutputs = resOutputs.concat({
-            value: Math.round(remainderAfterExtraOutput),
-          });
+          if (remainderAfterExtraOutput > threshold) {
+            bytesAccum += utils.extraOutputBytes();
+            resOutputs = resOutputs.concat({
+              value: Math.round(remainderAfterExtraOutput),
+            });
+            fee = Math.round(bytesAccum * feeRate);
+          } else {
+            fee = inAccum[feeAsset] - outAccum[feeAsset];
+          }
+        } else {
+          fee = Math.round(bytesAccum * feeRate);
         }
-
-        fee = Math.round(bytesAccum * feeRate);
 
         if (!isFinite(fee)) return utils.noResultOutput();
 
