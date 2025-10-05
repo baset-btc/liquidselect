@@ -3,7 +3,8 @@ const varuint = require("varuint-bitcoin");
 var TX_EMPTY_SIZE = 4 + 1 + 4;
 var TX_INPUT_BASE = 32 + 4 + 4;
 const EXTRA_OUTPUT_BYTES = 46 + 32; // Covers witness cases and address
-const EXTRA_ISSUANCE_BYTES = 66 + EXTRA_OUTPUT_BYTES;
+const EXTRA_ISSUANCE_BYTES_PUBLIC = 66 + EXTRA_OUTPUT_BYTES;
+const EXTRA_ISSUANCE_BYTES_CONFIDENTIAL = 1500; // Observed overhead for blinded issuance proofs
 var TX_OUTPUT_FEE = 9 + 1 + 33 + 1; // value + nonce + asset + scriptBytes
 // issuanceRangeProof + inflationRangeProof + witness.length + signature.length + pubkey.length + 1 byte each to represent the length of signature and pubkey
 var TX_INPUT_WITNESS = 1 + 1 + 1 + 72 + 33 + 1 + 1;
@@ -114,8 +115,10 @@ function extraOutputBytes() {
   return EXTRA_OUTPUT_BYTES;
 }
 
-function extraIssuanceBytes() {
-  return EXTRA_ISSUANCE_BYTES;
+function extraIssuanceBytes(isConfidentialIssuance = false) {
+  return isConfidentialIssuance
+    ? EXTRA_ISSUANCE_BYTES_CONFIDENTIAL
+    : EXTRA_ISSUANCE_BYTES_PUBLIC;
 }
 
 function noResultOutput() {

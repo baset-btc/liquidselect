@@ -20,7 +20,8 @@ function coinSelect(
   outputs,
   feeRate,
   isMainnet = true,
-  isIssuance = false
+  isIssuance = false,
+  isConfidentialIssuance = false
 ) {
   utxos = utxos.concat().sort(function (a, b) {
     return utxoScore(b, feeRate) - utxoScore(a, feeRate);
@@ -47,7 +48,13 @@ function coinSelect(
   ) {
     base = liquidAssetsBlackjack(utxos, outputs, feeRate, isMainnet);
   } else {
-    base = liquidLBtcBlackjack(utxos, outputs, feeRate, isIssuance);
+    base = liquidLBtcBlackjack(
+      utxos,
+      outputs,
+      feeRate,
+      isIssuance,
+      isConfidentialIssuance,
+    );
   }
   if (base.inputs) return base;
 
@@ -55,7 +62,13 @@ function coinSelect(
     (Object.keys(uniqueOutputAssets).length === 1 &&
       !Object.keys(uniqueOutputAssets).includes(feeAsset))
     ? liquidAssetsAccumulative(utxos, outputs, feeRate, isMainnet)
-    : liquidLBtcAccumulative(utxos, outputs, feeRate, isIssuance);
+    : liquidLBtcAccumulative(
+        utxos,
+        outputs,
+        feeRate,
+        isIssuance,
+        isConfidentialIssuance,
+      );
 }
 
 module.exports = coinSelect;

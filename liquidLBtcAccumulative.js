@@ -8,7 +8,8 @@ module.exports = function liquidLBtcAccumulative(
   utxos,
   outputs,
   feeRate,
-  isIssuance = false
+  isIssuance = false,
+  isConfidentialIssuance = false
 ) {
   if (!isFinite(utils.uintOrNaN(feeRate))) return utils.noResultOutput();
   let bytesAccum = utils.transactionBytes([], outputs);
@@ -41,13 +42,15 @@ module.exports = function liquidLBtcAccumulative(
     var fee =
       baseFee +
       feeRate * (shouldAddExtraOutput ? utils.extraOutputBytes() : 0) +
-      (isIssuance && !isIssuanceIncluded ? utils.extraIssuanceBytes() : 0);
+      (isIssuance && !isIssuanceIncluded
+        ? utils.extraIssuanceBytes(isConfidentialIssuance)
+        : 0);
 
     // go again?
     if (inAccum < outAccum + fee) continue;
 
     if (isIssuance && !isIssuanceIncluded) {
-      bytesAccum += utils.extraIssuanceBytes();
+      bytesAccum += utils.extraIssuanceBytes(isConfidentialIssuance);
       isIssuanceIncluded = true;
     }
 

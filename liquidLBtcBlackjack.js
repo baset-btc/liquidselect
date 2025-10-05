@@ -8,7 +8,8 @@ module.exports = function liquidLBtcBlackjack(
   utxos,
   outputs,
   feeRate,
-  isIssuance = false
+  isIssuance = false,
+  isConfidentialIssuance = false
 ) {
   if (!isFinite(utils.uintOrNaN(feeRate))) return utils.noResultOutput();
 
@@ -28,7 +29,9 @@ module.exports = function liquidLBtcBlackjack(
     let fee =
       basePotentialFee +
       feeRate * (shouldAddExtraOutput ? utils.extraOutputBytes() : 0) +
-      (isIssuance && !isIssuanceIncluded ? utils.extraIssuanceBytes() : 0);
+      (isIssuance && !isIssuanceIncluded
+        ? utils.extraIssuanceBytes(isConfidentialIssuance)
+        : 0);
 
     // would it waste value?
     if (inAccum + inputValue > outAccum + fee + threshold) continue;
@@ -41,7 +44,7 @@ module.exports = function liquidLBtcBlackjack(
     if (inAccum < outAccum + fee) continue;
 
     if (isIssuance && !isIssuanceIncluded) {
-      bytesAccum += utils.extraIssuanceBytes();
+      bytesAccum += utils.extraIssuanceBytes(isConfidentialIssuance);
       isIssuanceIncluded = true;
     }
 
