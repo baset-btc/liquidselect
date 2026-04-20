@@ -9,9 +9,15 @@ module.exports = function liquidLBtcBlackjack(
   outputs,
   feeRate,
   isIssuance = false,
-  isConfidentialIssuance = false
+  isConfidentialIssuance = false,
+  options = {}
 ) {
   if (!isFinite(utils.uintOrNaN(feeRate))) return utils.noResultOutput();
+  const changeOutputTemplate = {
+    address: options?.changeAddress,
+    asset: options?.feeAsset,
+  };
+  const extraOutputVBytes = utils.extraOutputBytes(changeOutputTemplate);
 
   let bytesAccum = utils.transactionBytes([], outputs);
   let inAccum = 0;
@@ -24,11 +30,11 @@ module.exports = function liquidLBtcBlackjack(
     const inputBytes = utils.inputBytes(input);
     const basePotentialFee = feeRate * (bytesAccum + inputBytes);
     const inputValue = utils.uintOrNaN(input.value);
-    let shouldAddExtraOutput =
+    const shouldAddExtraOutput =
       inAccum + inputValue - (outAccum + basePotentialFee) > threshold;
     let fee =
       basePotentialFee +
-      feeRate * (shouldAddExtraOutput ? utils.extraOutputBytes() : 0) +
+      feeRate * (shouldAddExtraOutput ? extraOutputVBytes : 0) +
       (isIssuance && !isIssuanceIncluded
         ? utils.extraIssuanceBytes(isConfidentialIssuance)
         : 0);
@@ -50,13 +56,12 @@ module.exports = function liquidLBtcBlackjack(
 
     // add extra output if needed
     if (shouldAddExtraOutput) {
-      const feeAfterExtraOutput =
-        feeRate * (bytesAccum + utils.extraOutputBytes());
+      const feeAfterExtraOutput = feeRate * (bytesAccum + extraOutputVBytes);
       const remainderAfterExtraOutput =
         utils.sumOrNaN(inputs) -
         (utils.sumOrNaN(outputs) + feeAfterExtraOutput);
       outputs = outputs.concat({
-        value: Math.round(remainderAfterExtraOutput),
+        value: Math.floor(remainderAfterExtraOutput),
       });
     }
 

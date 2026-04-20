@@ -10,7 +10,7 @@ module.exports = function split(utxos, baseOutputs, feeRate, isMainnet = true) {
 
   let outputs = baseOutputs.map((x) => ({
     ...x,
-    asset: Buffer.from(feeAsset, "hex"),
+    asset: x.asset === undefined ? Buffer.from(feeAsset, "hex") : x.asset,
   }));
 
   const bytesAccum = utils.transactionBytes(utxos, outputs);
@@ -43,8 +43,8 @@ module.exports = function split(utxos, baseOutputs, feeRate, isMainnet = true) {
     if (x.value !== undefined) return x;
 
     // not user defined, but still copy over any non-value fields
-    var y = {};
-    for (var k in x) y[k] = x[k];
+    const y = {};
+    for (const k in x) y[k] = x[k];
     y.value = splitValue;
     return y;
   });

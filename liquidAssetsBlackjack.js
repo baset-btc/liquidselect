@@ -8,17 +8,23 @@ module.exports = function liquidAssetsBlackjack(
   utxos,
   outputs,
   feeRate,
-  isMainnet = true
+  isMainnet = true,
+  options = {}
 ) {
   if (!isFinite(utils.uintOrNaN(feeRate))) return utils.noResultOutput();
+  const changeOutputTemplate = {
+    address: options?.changeAddress,
+    asset: options?.feeAsset,
+  };
+  const extraOutputVBytes = utils.extraOutputBytes(changeOutputTemplate);
 
   const feeAsset = isMainnet
     ? "6f0279e9ed041c3d710a9f57d0c02928416460c4b722ae3457a11eec381c526d"
     : "144c654344aa716d6f3abcc1ca90e5641e4e2a7f633bc09fe3baf64585819a49";
   let bytesAccum = utils.transactionBytes([], outputs);
   const inputs = [];
-  let inAccum = {};
-  let outAccum = {};
+  const inAccum = {};
+  const outAccum = {};
 
   let resOutputs = outputs.map((utxo) => ({
     ...utxo,
@@ -81,7 +87,7 @@ module.exports = function liquidAssetsBlackjack(
       const remainderAfterExtraOutput = inAccum[asset] - outAccum[asset];
       resOutputs = resOutputs.concat({
         asset,
-        value: Math.round(remainderAfterExtraOutput),
+        value: Math.floor(remainderAfterExtraOutput),
       });
     } else if (outAccum[asset] > inAccum[asset]) {
       return utils.noResultOutput();
@@ -100,7 +106,7 @@ module.exports = function liquidAssetsBlackjack(
         threshold;
     let fee =
         basePotentialFee +
-        feeRate * (shouldAddExtraOutput ? utils.extraOutputBytes() : 0);
+        feeRate * (shouldAddExtraOutput ? extraOutputVBytes : 0);
 
     let assetsCovered = false;
     if (!inAccum[feeAsset]) inAccum[feeAsset] = 0;
@@ -129,24 +135,24 @@ module.exports = function liquidAssetsBlackjack(
         outAccum[feeAsset] +
           feeRate *
             (bytesAccum +
-              (shouldAddExtraOutput ? utils.extraOutputBytes() : 0));
+              (shouldAddExtraOutput ? extraOutputVBytes : 0));
 
       if (allAssetsCovered) {
         if (outAccum[feeAsset] < inAccum[feeAsset]) {
-          const feeAfterExtraOutput = feeRate * (bytesAccum + utils.extraOutputBytes());
+          const feeAfterExtraOutput = feeRate * (bytesAccum + extraOutputVBytes);
           const remainderAfterExtraOutput =
             inAccum[feeAsset] - (outAccum[feeAsset] + feeAfterExtraOutput);
           if (remainderAfterExtraOutput > threshold) {
-            bytesAccum += utils.extraOutputBytes();
+            bytesAccum += extraOutputVBytes;
             resOutputs = resOutputs.concat({
-              value: Math.round(remainderAfterExtraOutput),
+              value: Math.floor(remainderAfterExtraOutput),
             });
-            fee = Math.round(bytesAccum * feeRate);
+            fee = Math.ceil(bytesAccum * feeRate);
           } else {
             fee = inAccum[feeAsset] - outAccum[feeAsset];
           }
         } else {
-          fee = Math.round(bytesAccum * feeRate);
+          fee = Math.ceil(bytesAccum * feeRate);
         }
 
         if (!isFinite(fee)) return utils.noResultOutput();

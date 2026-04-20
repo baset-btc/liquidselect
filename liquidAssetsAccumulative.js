@@ -8,9 +8,15 @@ module.exports = function liquidAssetsAccumulative(
   utxos,
   outputs,
   feeRate,
-  isMainnet
+  isMainnet,
+  options = {}
 ) {
   if (!isFinite(utils.uintOrNaN(feeRate))) return utils.noResultOutput();
+  const changeOutputTemplate = {
+    address: options?.changeAddress,
+    asset: options?.feeAsset,
+  };
+  const extraOutputVBytes = utils.extraOutputBytes(changeOutputTemplate);
 
   const feeAsset = isMainnet
     ? "6f0279e9ed041c3d710a9f57d0c02928416460c4b722ae3457a11eec381c526d"
@@ -18,8 +24,8 @@ module.exports = function liquidAssetsAccumulative(
   let bytesAccum = utils.transactionBytes([], outputs);
 
   const inputs = [];
-  let inAccum = {};
-  let outAccum = {};
+  const inAccum = {};
+  const outAccum = {};
 
   let resOutputs = outputs.map((utxo) => ({
     ...utxo,
@@ -41,19 +47,8 @@ module.exports = function liquidAssetsAccumulative(
     (utxo) => utxo.witnessUtxo.asset.toString("hex") === feeAsset
   );
 
-  if (
-    Object.keys(outAccum).some(
-      (valOutputAsset) =>
-        valOutputAsset !== feeAsset &&
-        nonFeeAssetInputs.findIndex(
-          (valInput) =>
-            valInput.value >= outAccum[valOutputAsset] &&
-            valInput.witnessUtxo.asset.toString("hex") === valOutputAsset
-        ) === -1
-    )
-  ) {
-    return utils.noResultOutput();
-  }
+  // Important: do not require a single UTXO to cover each non-fee asset.
+  // Fungible assets (e.g. USDT) may need to aggregate many UTXOs.
 
   for (let i = 0; i < nonFeeAssetInputs.length; i++) {
     const input = nonFeeAssetInputs[i];
@@ -86,7 +81,7 @@ module.exports = function liquidAssetsAccumulative(
       const remainderAfterExtraOutput = inAccum[asset] - outAccum[asset];
       resOutputs = resOutputs.concat({
         asset,
-        value: Math.round(remainderAfterExtraOutput),
+        value: Math.floor(remainderAfterExtraOutput),
       });
     } else if (outAccum[asset] > inAccum[asset]) {
       return utils.noResultOutput();
@@ -117,20 +112,19 @@ module.exports = function liquidAssetsAccumulative(
       inAccum[feeAsset] >=
       (outAccum[feeAsset] || 0) +
         feeRate *
-          (bytesAccum + (shouldAddExtraOutput ? utils.extraOutputBytes() : 0));
+          (bytesAccum + (shouldAddExtraOutput ? extraOutputVBytes : 0));
 
     if (feeAssetCovered) {
       if ((outAccum[feeAsset] || 0) < inAccum[feeAsset]) {
-        const feeAfterExtraOutput =
-          feeRate * (bytesAccum + utils.extraOutputBytes());
+        const feeAfterExtraOutput = feeRate * (bytesAccum + extraOutputVBytes);
         const remainderAfterExtraOutput =
           inAccum[feeAsset] - ((outAccum[feeAsset] || 0) + feeAfterExtraOutput);
         if (remainderAfterExtraOutput > threshold) {
-          bytesAccum += utils.extraOutputBytes();
+          bytesAccum += extraOutputVBytes;
           resOutputs = resOutputs.concat({
-            value: Math.round(remainderAfterExtraOutput),
+            value: Math.floor(remainderAfterExtraOutput),
           });
-          fee = Math.round(bytesAccum * feeRate); // TODO: Fix bug en el blackjack
+          fee = Math.ceil(bytesAccum * feeRate);
         } else {
           fee = inAccum[feeAsset] - ((outAccum[feeAsset] || 0));
         }
